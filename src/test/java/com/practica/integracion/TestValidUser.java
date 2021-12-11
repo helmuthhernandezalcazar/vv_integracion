@@ -1,6 +1,7 @@
 package com.practica.integracion;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.when;
 
@@ -9,7 +10,6 @@ import java.util.Arrays;
 import java.util.Collection;
 
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InOrder;
@@ -20,85 +20,99 @@ import com.practica.integracion.DAO.AuthDAO;
 import com.practica.integracion.DAO.GenericDAO;
 import com.practica.integracion.DAO.User;
 import com.practica.integracion.manager.SystemManager;
+import com.practica.integracion.manager.SystemManagerException;
 
 @ExtendWith(MockitoExtension.class)
 public class TestValidUser {
-
 	@Mock
-	private static AuthDAO mockAuthDAO;
+	private static AuthDAO mockAuthDao;
 	@Mock
-	private static GenericDAO mockGenericDAO;
+	private static GenericDAO mockGenericDao;
 	
 	private User validUser;
-	
 	private InOrder ordered;
-	
 	private SystemManager manager;
+	private String filter = "12345";
+	private String data = "12345";
+	private String id = "12345";
 	
 	@BeforeEach
 	public void setUp() {
-		validUser = new User("1", "Helmuth", "Hernández", "Madrid", new ArrayList<Object>(Arrays.asList(1,2)));
-		when(mockAuthDAO.getAuthData(validUser.getId())).thenReturn(validUser);
-		ordered = inOrder(mockAuthDAO, mockGenericDAO);
-		manager = new SystemManager(mockAuthDAO, mockGenericDAO);
+		validUser = new User("1", "Valido", "Valido", "Calle valida", 
+				new ArrayList<Object>(Arrays.asList(1, 2)));
+		
+		when(mockAuthDao.getAuthData(validUser.getId())).thenReturn(validUser);
+		
+		ordered = inOrder(mockAuthDao, mockGenericDao);
+		
+		manager = new SystemManager(mockAuthDao, mockGenericDao);
 	}
 	
 	@Test
-	@DisplayName("Test Start Remote System")
-	public void testStartRemoteSystemWithValidUserAndSystem() throws Exception {
-
-		String validId = "1234";
+	public void startRemoteSystemValidUser() throws Exception {
 		ArrayList<Object> lista = new ArrayList<>(Arrays.asList("uno", "dos"));
-		when(mockGenericDAO.getSomeData(validUser, "where id=" + validId)).thenReturn(lista);
+		when(mockGenericDao.getSomeData(validUser, "where id=" + filter)).thenReturn(lista);
+		
+		Collection<Object> retorno = manager.startRemoteSystem(validUser.getId(), filter);
+		assertEquals("[uno, dos]", retorno.toString());
+		
+		ordered.verify(mockAuthDao).getAuthData(validUser.getId());
+		ordered.verify(mockGenericDao).getSomeData(validUser, "where id=" + filter);
+	}
 
-		Collection<Object> retorno = manager.startRemoteSystem(validUser.getId(), validId);
-		assertEquals(retorno.toString(), "[uno, dos]");
+	@Test
+	public void stopRemoteSystemValidUser() throws Exception {
+		ArrayList<Object> lista = new ArrayList<>(Arrays.asList("uno", "dos"));
+		when(mockGenericDao.getSomeData(validUser, "where id=" + filter)).thenReturn(lista);
 		
-		ordered.verify(mockAuthDAO).getAuthData(validUser.getId());
-		ordered.verify(mockGenericDAO).getSomeData(validUser,  "where id=" + validId);
-			
+		Collection<Object> retorno = manager.stopRemoteSystem(validUser.getId(), filter);
+		assertEquals("[uno, dos]", retorno.toString());
+		
+		ordered.verify(mockAuthDao).getAuthData(validUser.getId());
+		ordered.verify(mockGenericDao).getSomeData(validUser, "where id=" + filter);
 	}
 	
 	@Test
-	@DisplayName("Test Stop Remote System")
-	public void testStopRemoteSystemWithValidUserAndSystem() throws Exception {
+	public void addRemoteSystemValidUserIsAddedTrue() throws Exception {
+		when(mockGenericDao.updateSomeData(validUser, data)).thenReturn(true);
+		
+		manager.addRemoteSystem(validUser.getId(), data);
+		
+		ordered.verify(mockAuthDao).getAuthData(validUser.getId());
+		ordered.verify(mockGenericDao).updateSomeData(validUser, data);
+	}
+	
+	@Test
+	public void addRemoteSystemValidUserIsAddedFalse() throws Exception {
+		when(mockGenericDao.updateSomeData(validUser, data)).thenReturn(false);
+		
+		assertThrows(SystemManagerException.class, () -> {
+			manager.addRemoteSystem(validUser.getId(), data);
+		});
+		
+		ordered.verify(mockAuthDao).getAuthData(validUser.getId());
+		ordered.verify(mockGenericDao).updateSomeData(validUser, data);
+	}
+	
+	@Test
+	public void deleteRemoteSystemValidUserIsDeletedTrue() throws Exception {
+		when(mockGenericDao.deleteSomeData(validUser, id)).thenReturn(true);
+		
+		manager.deleteRemoteSystem(validUser.getId(), id);
+		
+		ordered.verify(mockAuthDao).getAuthData(validUser.getId());
+		ordered.verify(mockGenericDao).deleteSomeData(validUser, id);
+	}
+	
+	@Test
+	public void deleteRemoteSystemValidUserIsDeletedFalse() throws Exception {
+		when(mockGenericDao.deleteSomeData(validUser, id)).thenReturn(false);
+		
+		assertThrows(SystemManagerException.class, () -> {
+			manager.deleteRemoteSystem(validUser.getId(), id);
+		});
 
-		String validId = "1234";
-		ArrayList<Object> lista = new ArrayList<>(Arrays.asList("uno", "dos"));
-		when(mockGenericDAO.getSomeData(validUser, "where id=" + validId)).thenReturn(lista);
-			
-		Collection<Object> retorno = manager.startRemoteSystem(validUser.getId(), validId);
-		assertEquals(retorno.toString(), "[uno, dos]");
-		
-		ordered.verify(mockAuthDAO).getAuthData(validUser.getId());
-		ordered.verify(mockGenericDAO).getSomeData(validUser,  "where id=" + validId);
-			
-	}
-	
-	@Test
-	@DisplayName("Test Add Remote System")
-	public void testAddRemoteSystemWithValidUserAndSystem() throws Exception {
-		
-		ArrayList<Object> lista = new ArrayList<>(Arrays.asList("uno", "dos"));
-		when(mockGenericDAO.updateSomeData(validUser, lista)).thenReturn(true);
-		
-		manager.addRemoteSystem(validUser.getId(), lista);
-		
-		ordered.verify(mockAuthDAO).getAuthData(validUser.getId());
-		ordered.verify(mockGenericDAO).updateSomeData(validUser, lista);
-		
-	}
-	
-	@Test
-	@DisplayName("Test Delete Remote System")
-	public void testDeleteRemoteSystemWithValidUserAndSystem() throws Exception {
-		String validId = "1234";
-		when(mockGenericDAO.deleteSomeData(validUser, validId)).thenReturn(true);
-		
-		manager.deleteRemoteSystem(validUser.getId(), validId);
-		
-		ordered.verify(mockAuthDAO).getAuthData(validUser.getId());
-		ordered.verify(mockGenericDAO).deleteSomeData(validUser, validId);
-		
+		ordered.verify(mockAuthDao).getAuthData(validUser.getId());
+		ordered.verify(mockGenericDao).deleteSomeData(validUser, id);
 	}
 }
